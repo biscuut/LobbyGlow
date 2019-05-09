@@ -1,0 +1,10 @@
+[
+  {
+    "modid": "lobbyglow",
+    "name": "LobbyGlow",
+    "description": "Allows the glowing effect to show in 1.8.9 in Hypixel Lobbies",
+    "version": "1.0",
+    "mcversion": "${mcversion}",
+    "authorList": ["Biscut"]
+  }
+]
