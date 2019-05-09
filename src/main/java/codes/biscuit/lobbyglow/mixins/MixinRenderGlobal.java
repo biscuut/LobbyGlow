@@ -2,7 +2,6 @@ package codes.biscuit.lobbyglow.mixins;
 
 import codes.biscuit.lobbyglow.LobbyGlow;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -23,7 +22,6 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
-import java.util.Iterator;
 import java.util.List;
 
 @Mixin(RenderGlobal.class)
@@ -43,7 +41,7 @@ public class MixinRenderGlobal {
 
     // This is the entity outline section of RenderGlobal#renderEntities edited to work outside of spectator mode & stuff
     @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", ordinal = 2, args = {"ldc=entities", "log=true"}), locals = LocalCapture.CAPTURE_FAILSOFT)
-    private void onRenderEntitySimple(Entity renderViewEntity, ICamera camera, float partialTicks, CallbackInfo ci, int pass, double d0, double d1, double d2, Entity entity, double d3, double d4, double d5, List<Entity> list, boolean bool, boolean bool1, int i, boolean bool2, Iterator iterator, boolean bool3, FontRenderer fontRenderer) {
+    private void onRenderEntitySimple(Entity renderViewEntity, ICamera camera, float partialTicks, CallbackInfo ci, int pass, double d0, double d1, double d2, Entity entity, double d3, double d4, double d5, List<Entity> list) { // must add boolean bool, boolean bool1, int i for optifine
         if (this.entityOutlineFramebuffer != null && this.entityOutlineShader != null && this.mc.thePlayer != null && LobbyGlow.INSTANCE.getUtils().isInHypixelLobby()) // Edited to remove the keybind, spectator mode conditions and added condition to be in the hypixel lobby.
         {
             GlStateManager.depthFunc(519);
