@@ -92,6 +92,7 @@ dependencies {
 }
 
 jar {
+    //noinspection GroovyAssignabilityCheck
     from configurations.provided.asFileTree.files.collect {
         zipTree(it)
     }

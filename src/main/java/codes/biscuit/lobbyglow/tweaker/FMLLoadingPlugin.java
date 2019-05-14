@@ -14,12 +14,14 @@ import java.net.URL;
 import java.security.CodeSource;
 import java.util.List;
 
+@SuppressWarnings("unused")
 @SortingIndex(1)
 public class FMLLoadingPlugin implements ITweaker {
 
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {}
 
+    @SuppressWarnings({"JavaReflectionMemberAccess", "unchecked"})
     @Override
     public void injectIntoClassLoader(LaunchClassLoader classLoader) {
         MixinBootstrap.init();

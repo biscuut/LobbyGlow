@@ -15,6 +15,7 @@ class APIPojo {
     }
 
     public class PlayerPojo {
+
         private boolean battlePassGlowStatus;
 
         boolean isBattlePassGlowStatus() {

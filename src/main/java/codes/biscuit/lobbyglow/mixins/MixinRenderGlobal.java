@@ -15,6 +15,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -25,7 +26,7 @@ import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 import java.util.List;
 
 @Mixin(RenderGlobal.class)
-public class MixinRenderGlobal {
+public abstract class MixinRenderGlobal {
 
     @Shadow private WorldClient theWorld;
     @Final @Shadow private RenderManager renderManager;
@@ -33,16 +34,32 @@ public class MixinRenderGlobal {
     @Shadow private Framebuffer entityOutlineFramebuffer;
     @Shadow private ShaderGroup entityOutlineShader;
 
-    // The old entity outline section is returned false to stop it from executing, replaced with the injection below
-    @Redirect(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;isRenderEntityOutlines()Z", ordinal = 0, args = {"log=true"}))
-    private boolean onIsRenderEntityOutlines(RenderGlobal renderGlobal) {
+    @Redirect(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;isRenderEntityOutlines()Z", ordinal = 0))
+    private boolean onRenderEntities(RenderGlobal renderGlobal) {
         return false;
     }
 
-    // This is the entity outline section of RenderGlobal#renderEntities edited to work outside of spectator mode & stuff
-    @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", ordinal = 2, args = {"ldc=entities", "log=true"}), locals = LocalCapture.CAPTURE_FAILSOFT)
-    private void onRenderEntitySimple(Entity renderViewEntity, ICamera camera, float partialTicks, CallbackInfo ci, int pass, double d0, double d1, double d2, Entity entity, double d3, double d4, double d5, List<Entity> list) { // must add boolean bool, boolean bool1, int i for optifine
-        if (this.entityOutlineFramebuffer != null && this.entityOutlineShader != null && this.mc.thePlayer != null && LobbyGlow.INSTANCE.getUtils().isInHypixelLobby()) // Edited to remove the keybind, spectator mode conditions and added condition to be in the hypixel lobby.
+    /**
+     * @reason Removed spectator mode requirement to allow glowing in lobbies.
+     * @author Biscut
+     */
+    @Overwrite
+    public boolean isRenderEntityOutlines() {
+        return this.entityOutlineFramebuffer != null && this.entityOutlineShader != null && this.mc.thePlayer != null && LobbyGlow.INSTANCE.getUtils().isInHypixelLobby();
+    }
+
+    @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", shift = At.Shift.BEFORE, ordinal = 2, args = {"ldc=entities"}), locals = LocalCapture.CAPTURE_FAILSOFT) // Optifine version
+    private void renderEntities(Entity renderViewEntity, ICamera camera, float partialTicks, CallbackInfo ci, int pass, double d0, double d1, double d2, Entity entity, double d3, double d4, double d5, List<Entity> list, boolean bool0, boolean bool1, int i1) {
+        displayOutlines(list, d0, d1, d2, camera, partialTicks);
+    }
+
+    @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", shift = At.Shift.BEFORE, ordinal = 2, args = {"ldc=entities"}), locals = LocalCapture.CAPTURE_FAILSOFT) // Non-optifine version
+    private void renderEntities(Entity renderViewEntity, ICamera camera, float partialTicks, CallbackInfo ci, int pass, double d0, double d1, double d2, Entity entity, double d3, double d4, double d5, List<Entity> list) {
+        displayOutlines(list, d0, d1, d2, camera, partialTicks);
+    }
+
+    private void displayOutlines(List<Entity> entities, double x, double y, double z, ICamera camera, float partialTicks) {
+        if (isRenderEntityOutlines()) // Replaced isRenderEntityOutlines call with the conditions themselves
         {
             GlStateManager.depthFunc(519);
             GlStateManager.disableFog();
@@ -51,18 +68,12 @@ public class MixinRenderGlobal {
             this.theWorld.theProfiler.endStartSection("entityOutlines");
             RenderHelper.disableStandardItemLighting();
             this.renderManager.setRenderOutlines(true);
-            for (int j = 0; j < list.size(); ++j)
-            {
-                Entity entity3 = list.get(j);
-//                if (!entity3.shouldRenderInPass(pass)) continue; // This condition always seems to come out true, removing it
-                boolean flag = this.mc.getRenderViewEntity() instanceof EntityLivingBase && ((EntityLivingBase)this.mc.getRenderViewEntity()).isPlayerSleeping();
-                boolean flag1 = entity3.isInRangeToRender3d(d0, d1, d2) && (entity3.ignoreFrustumCheck || camera.isBoundingBoxInFrustum(entity3.getEntityBoundingBox()) || entity3.riddenByEntity == this.mc.thePlayer) && entity3 instanceof EntityPlayer;
-
-                if ((entity3 != this.mc.getRenderViewEntity() || this.mc.gameSettings.thirdPersonView != 0 || flag) && flag1)
-                {
-                    if (LobbyGlow.INSTANCE.getUtils().shouldGlow(entity3)) {
-                        this.renderManager.renderEntitySimple(entity3, partialTicks);
-                    }
+            for (Entity entity : entities) {
+                //                    if (!entity.shouldRenderInPass(pass)) continue; // Removed because this condition seems to always trigger?
+                boolean flag = this.mc.getRenderViewEntity() instanceof EntityLivingBase && ((EntityLivingBase) this.mc.getRenderViewEntity()).isPlayerSleeping();
+                boolean flag1 = entity.isInRangeToRender3d(x, y, z) && (entity.ignoreFrustumCheck || camera.isBoundingBoxInFrustum(entity.getEntityBoundingBox()) || entity.riddenByEntity == this.mc.thePlayer) && entity instanceof EntityPlayer;
+                if ((entity != this.mc.getRenderViewEntity() || this.mc.gameSettings.thirdPersonView != 0 || flag) && flag1 && LobbyGlow.INSTANCE.getUtils().shouldGlow(entity)) {
+                    this.renderManager.renderEntitySimple(entity, partialTicks);
                 }
             }
 
