@@ -53,6 +53,12 @@ repositories {
     }
 }
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
 dependencies {
     provided('org.spongepowered:mixin:0.6.4-SNAPSHOT') {
         exclude module: 'launchwrapper'
@@ -61,6 +67,7 @@ dependencies {
         exclude module: 'commons-io'
         exclude module: 'log4j-core'
     }
+    compile (name:'OptiFine_HD_U_I7', ext:'jar')
     // you may put jars on which you depend on in ./libs
     // or you may define them like so..
     //compile "some.group:artifact:version:classifier"
