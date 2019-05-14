@@ -18,7 +18,8 @@ import java.util.regex.Pattern;
 public class PlayerListener {
 
     private LobbyGlow main;
-    private int tickCounter = 0;
+    private int keyTickCounter = 0;
+    private int updateTickCounter = 0;
 
     public PlayerListener(LobbyGlow main) {
         this.main = main;
@@ -28,20 +29,21 @@ public class PlayerListener {
     public void onClientChatReceive(ClientChatReceivedEvent e) {
         String message = e.message.getUnformattedText();
         if (message.startsWith("Your new API key is ")) {
-            String key = message.split(Pattern.quote("Your new API key is "))[1];
+            String key = message.split(Pattern.quote("Your new API key is "), 2)[1];
             main.getConfigValues().setKey(key);
             Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN+"Successfully updated your Hypixel API in LobbyGlow!"));
             main.getConfigValues().saveConfig();
+            main.getUtils().glowingCache.clear();
         }
     }
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent e) {
-        if (tickCounter >= 0) {
+        if (keyTickCounter >= 0) {
             Minecraft mc = Minecraft.getMinecraft();
             if (e.phase == TickEvent.Phase.START && mc != null && mc.thePlayer != null && mc.theWorld != null && main.getConfigValues().getKey().equals("") && main.getUtils().isOnHypixel()) {
-                tickCounter++;
-                if (tickCounter > 50) {
+                keyTickCounter++;
+                if (keyTickCounter > 50) {
                     Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.STRIKETHROUGH + "--------------" + EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + EnumChatFormatting.BOLD + " LobbyGlow " + EnumChatFormatting.GRAY + "]" + EnumChatFormatting.GRAY + EnumChatFormatting.STRIKETHROUGH + "--------------"));
                     IChatComponent message = new ChatComponentText(EnumChatFormatting.RED + "It seems you haven't set your Hypixel API key for LobbyGlow. Click here to create a new one automatically or do /lg key <key> to set it manually.");
                     message.setChatStyle(message.getChatStyle().setChatHoverEvent( // Add the translation as hover text and send the message
@@ -50,7 +52,17 @@ public class PlayerListener {
                             new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/api new")));
                     Utils.sendMessage(message);
                     Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.STRIKETHROUGH + "---------------------------------------"));
-                    tickCounter = -1;
+                    keyTickCounter = -1;
+                }
+            }
+        }
+        if (updateTickCounter >= 0) {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (e.phase == TickEvent.Phase.START && mc != null && mc.thePlayer != null && mc.theWorld != null) {
+                updateTickCounter++;
+                if (updateTickCounter > 50) {
+                    main.getUtils().checkUpdates();
+                    updateTickCounter = -1;
                 }
             }
         }
@@ -58,6 +70,6 @@ public class PlayerListener {
 
     @SubscribeEvent
     public void onClientDisconnectionFromServer(FMLNetworkEvent.ClientDisconnectionFromServerEvent e) {
-        tickCounter = 0;
+        keyTickCounter = 0;
     }
 }

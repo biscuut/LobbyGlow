@@ -58,9 +58,15 @@ public class LobbyGlowCommand extends CommandBase {
         if (args.length > 0) {
             if (args[0].equalsIgnoreCase("key")) {
                 if (args.length > 1) {
-                    main.getConfigValues().setKey(args[1]);
-                    main.getConfigValues().saveConfig();
-                    Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Your key has been updated!"));
+                    if (args[1].equalsIgnoreCase("clear")) {
+                        main.getConfigValues().setKey("");
+                        main.getConfigValues().saveConfig();
+                        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Your key has been cleared!"));
+                    } else {
+                        main.getConfigValues().setKey(args[1]);
+                        main.getConfigValues().saveConfig();
+                        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "Your key has been updated!"));
+                    }
                 } else {
                     Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "Please specify a key: /lg key <key>"));
                 }
@@ -68,7 +74,7 @@ public class LobbyGlowCommand extends CommandBase {
             }
         }
         Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.STRIKETHROUGH + "--------------" + EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + EnumChatFormatting.BOLD + " LobbyGlow " + EnumChatFormatting.GRAY + "]" + EnumChatFormatting.GRAY + EnumChatFormatting.STRIKETHROUGH + "--------------"));
-        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GOLD + "\u25CF /lg key <key> " + EnumChatFormatting.GRAY + "- Enter your Hypixel API key manually."));
+        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GOLD + "\u25CF /lg key <key|clear> " + EnumChatFormatting.GRAY + "- Enter your Hypixel API key manually."));
         Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + "v1.0" + " by Biscut"));
         Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.STRIKETHROUGH + "---------------------------------------"));
     }
