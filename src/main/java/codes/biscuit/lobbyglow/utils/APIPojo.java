@@ -1,24 +1,24 @@
 package codes.biscuit.lobbyglow.utils;
 
 @SuppressWarnings("unused")
-class APIPojo {
+public class APIPojo {
 
     private boolean success;
     private PlayerPojo player;
 
-    boolean isSuccess() {
+    public boolean isSuccess() {
         return success;
     }
 
-    PlayerPojo getPlayer() {
+    public PlayerPojo getPlayer() {
         return player;
     }
 
     public class PlayerPojo {
 
-        private boolean battlePassGlowStatus;
+        private Boolean battlePassGlowStatus;
 
-        boolean isBattlePassGlowStatus() {
+        public Boolean isBattlePassGlowStatus() {
             return battlePassGlowStatus;
         }
     }

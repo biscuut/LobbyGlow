@@ -1,7 +1,10 @@
 package codes.biscuit.lobbyglow.commands;
 
 import codes.biscuit.lobbyglow.LobbyGlow;
+import codes.biscuit.lobbyglow.utils.APIPojo;
 import codes.biscuit.lobbyglow.utils.Utils;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.network.NetworkPlayerInfo;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommandSender;
 import net.minecraft.util.BlockPos;
@@ -11,6 +14,7 @@ import net.minecraft.util.EnumChatFormatting;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 public class LobbyGlowCommand extends CommandBase {
 
@@ -71,11 +75,62 @@ public class LobbyGlowCommand extends CommandBase {
                     Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "Please specify a key: /lg key <key>"));
                 }
                 return;
+            } else if (args[0].equalsIgnoreCase("clear")) {
+                main.getUtils().clearCache();
+                Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "All glowing players have been cleared from the cache!"));
+                return;
+            } else if (args[0].equalsIgnoreCase("test")) {
+                if (args.length > 1) {
+                    UUID uuid = null;
+                    try {
+                        uuid = UUID.fromString(args[1]);
+                    } catch (IllegalArgumentException ex) {
+                        for (NetworkPlayerInfo info : Minecraft.getMinecraft().getNetHandler().getPlayerInfoMap()) {
+                            if (info.getGameProfile().getName().equalsIgnoreCase(args[1])) {
+                                uuid = info.getGameProfile().getId();
+                            }
+                        }
+                    }
+                    if (uuid != null) {
+                        UUID finalUuid = uuid;
+                        if (main.getUtils().getLastMinuteQueries() < 110) {
+                            new Thread(() -> {
+                                APIPojo response = main.getUtils().getAPIResponse(finalUuid);
+                                if (response != null) {
+                                    if (response.isSuccess()) {
+                                        if (response.getPlayer().isBattlePassGlowStatus() != null) {
+                                            if (response.getPlayer().isBattlePassGlowStatus()) {
+                                                Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "The connection was successful! This player's glow status is true."));
+                                            } else {
+                                                Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "The connection was successful! This player's glow status is " + EnumChatFormatting.RED + "false" + EnumChatFormatting.GREEN + "."));
+                                            }
+                                        } else {
+                                            Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "The connection was successful! This player's glow status is " + EnumChatFormatting.RED + "not set" + EnumChatFormatting.GREEN + ". If this player's glow is supposed to be enabled, they must toggle their glow twice for it to be set in the API."));
+                                        }
+                                    } else {
+                                        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "The connection was successful but the response was not a success."));
+                                    }
+                                } else {
+                                    Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "An error occurred in the connection and it was not successful!"));
+                                }
+                            }).start();
+                        } else {
+                            Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "You've made too many API requests recently! Please try again in a minute."));
+                        }
+                    } else {
+                        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "This player is not in your game!"));
+                    }
+                } else {
+                    Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "Please specify a player/uuid: /lg test <player|uuid>"));
+                }
+                return;
             }
         }
         Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.STRIKETHROUGH + "--------------" + EnumChatFormatting.GRAY + "[" + EnumChatFormatting.GOLD + EnumChatFormatting.BOLD + " LobbyGlow " + EnumChatFormatting.GRAY + "]" + EnumChatFormatting.GRAY + EnumChatFormatting.STRIKETHROUGH + "--------------"));
         Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GOLD + "\u25CF /lg key <key|clear> " + EnumChatFormatting.GRAY + "- Enter your Hypixel API key manually."));
-        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + "v1.0" + " by Biscut"));
+        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GOLD + "\u25CF /lg clear " + EnumChatFormatting.GRAY + "- "+EnumChatFormatting.YELLOW+"[DEBUG]"+EnumChatFormatting.GRAY+" Remove all current glowing players from the cache (will download again after)."));
+        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GOLD + "\u25CF /lg test <player|uuid> " + EnumChatFormatting.GRAY + "- "+EnumChatFormatting.YELLOW+"[DEBUG]"+EnumChatFormatting.GRAY+" Test your connection and the target player's glow status on the API."));
+        Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + "v"+LobbyGlow.VERSION+"" + " by Biscut"));
         Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.STRIKETHROUGH + "---------------------------------------"));
     }
 }

@@ -24,7 +24,8 @@ import java.util.regex.Pattern;
 
 public class Utils {
 
-    public Map<UUID, Boolean> glowingCache = new HashMap<>();
+    private boolean loadedPlayer = false; // Has the client player been loaded yet?
+    private Map<UUID, Boolean> glowingCache = new HashMap<>();
     private int lastMinuteQueries = 0; // to avoid hitting limit of 120
     private int currentThreads = 0;
     private static String COMPASS_NAME = EnumChatFormatting.GREEN+"Game Menu "+EnumChatFormatting.GRAY+"(Right Click)";
@@ -40,6 +41,12 @@ public class Utils {
     public boolean shouldGlow(Entity entity) {
         if (entity.getName().matches("[a-zA-Z0-9]*")) { // Don't check NPCs etc.
             UUID uuid = entity.getUniqueID();
+            if (!loadedPlayer) { // Load the client player before anyone else if they haven't been loaded yet
+                loadedPlayer = true;
+                shouldGlow(Minecraft.getMinecraft().thePlayer);
+                shouldGlow(entity);
+                return false;
+            }
             if (glowingCache.containsKey(uuid)) {
                 if (glowingCache.get(uuid) != null) {
                     return glowingCache.get(uuid);
@@ -50,68 +57,79 @@ public class Utils {
 
                 if (currentThreads < CONCURRENT_THREADS && lastMinuteQueries < QUERIES_PER_MINUTE) {
                     addCacheEntry(uuid, null);
-                    grabAPI(uuid);
+                    grabAPIStatus(uuid);
                 }
             }
         }
         return false;
     }
 
+    public void clearCache() {
+        glowingCache.clear();
+        loadedPlayer = false;
+    }
+
     private void addCacheEntry(UUID uuid, Boolean status) {
         if (glowingCache.size() > 2000) { // Avoid caching too many
-            glowingCache.clear();
+            clearCache();
         }
         glowingCache.put(uuid, status);
     }
 
+    public APIPojo getAPIResponse(UUID uuid) {
+        HttpsURLConnection conn = null;
+        try {
+            URL url = new URL(("https://api.hypixel.net/player" +
+                    "?key=" + URLEncoder.encode(main.getConfigValues().getKey(), "UTF-8")
+                    + "&uuid=" + URLEncoder.encode(uuid.toString(), "UTF-8")));
+            lastMinuteQueries++;
+            currentThreads++;
+            conn = (HttpsURLConnection) url.openConnection();
+            conn.setRequestProperty("Content-Type", "text/plain; charset=" + "UTF-8");
+            conn.setRequestProperty("Accept-Charset", "UTF-8");
+            conn.setRequestMethod("GET");
+            int responseCode = conn.getResponseCode();
+            StringBuilder outputBuilder = new StringBuilder();
+            String nextLine;
+            if (conn.getInputStream() != null) {
+                BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
+                while (null != (nextLine = reader.readLine())) {
+                    outputBuilder.append(nextLine);
+                }
+            }
+            String result = outputBuilder.toString();
+            if (responseCode != 200) {
+                throw new Exception();
+            }
+            return new Gson().fromJson(result, APIPojo.class);
+        } catch (Exception ex) {
+            ex.printStackTrace();
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+            currentThreads--;
+            new Timer().schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    lastMinuteQueries--;
+                }
+            }, 60000);
+        }
+        return null;
+    }
 
-    private void grabAPI(UUID uuid) {
+    private void grabAPIStatus(UUID uuid) {
         if (!main.getConfigValues().getKey().equals("")) {
             new Thread(() -> {
-                HttpsURLConnection conn = null;
-                try {
-                    URL url = new URL(("https://api.hypixel.net/player" +
-                            "?key=" + URLEncoder.encode(main.getConfigValues().getKey(), "UTF-8")
-                            + "&uuid=" + URLEncoder.encode(uuid.toString(), "UTF-8")));
-                    lastMinuteQueries++;
-                    currentThreads++;
-                    conn = (HttpsURLConnection) url.openConnection();
-                    conn.setRequestProperty("Content-Type", "text/plain; charset=" + "UTF-8");
-                    conn.setRequestProperty("Accept-Charset", "UTF-8");
-                    conn.setRequestMethod("GET");
-                    int responseCode = conn.getResponseCode();
-                    StringBuilder outputBuilder = new StringBuilder();
-                    String nextLine;
-                    if (conn.getInputStream() != null) {
-                        BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream(), StandardCharsets.UTF_8));
-                        while (null != (nextLine = reader.readLine())) {
-                            outputBuilder.append(nextLine);
-                        }
-                    }
-                    String result = outputBuilder.toString();
-                    if (responseCode != 200) {
-                        throw new Exception();
-                    }
-                    APIPojo apiPojo = new Gson().fromJson(result, APIPojo.class);
+                APIPojo apiPojo = getAPIResponse(uuid);
+                if (apiPojo != null) {
                     if (apiPojo.isSuccess()) {
                         if (apiPojo.getPlayer() != null) {
                             boolean isGlowing = apiPojo.getPlayer().isBattlePassGlowStatus();
                             addCacheEntry(uuid, isGlowing);
                         }
                     }
-                } catch (Exception ex) {
-                    ex.printStackTrace();
-                } finally {
-                    if (conn != null) {
-                        conn.disconnect();
-                    }
-                    currentThreads--;
-                    new Timer().schedule(new TimerTask() {
-                        @Override
-                        public void run() {
-                            lastMinuteQueries--;
-                        }
-                    }, 60000);
                 }
             }).start();
         }
@@ -227,5 +245,9 @@ public class Utils {
                 ex.printStackTrace();
             }
         }).start();
+    }
+
+    public int getLastMinuteQueries() {
+        return lastMinuteQueries;
     }
 }

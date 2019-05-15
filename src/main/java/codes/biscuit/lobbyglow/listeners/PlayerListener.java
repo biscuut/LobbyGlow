@@ -33,7 +33,7 @@ public class PlayerListener {
             main.getConfigValues().setKey(key);
             Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN+"Successfully updated your Hypixel API in LobbyGlow!"));
             main.getConfigValues().saveConfig();
-            main.getUtils().glowingCache.clear();
+            main.getUtils().clearCache();
         }
     }
 
