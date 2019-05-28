@@ -79,6 +79,14 @@ public class LobbyGlowCommand extends CommandBase {
                 main.getUtils().clearCache();
                 Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "All glowing players have been cleared from the cache!"));
                 return;
+            } else if (args[0].equalsIgnoreCase("toggle")) {
+                if (main.getConfigValues().enabled) {
+                    Utils.sendMessage(new ChatComponentText(EnumChatFormatting.RED + "LobbyGlow is now disabled!"));
+                } else {
+                    Utils.sendMessage(new ChatComponentText(EnumChatFormatting.GREEN + "LobbyGlow is now enabled!"));
+                }
+                main.getConfigValues().enabled = !main.getConfigValues().enabled;
+                return;
             } else if (args[0].equalsIgnoreCase("test")) {
                 if (args.length > 1) {
                     UUID uuid = null;

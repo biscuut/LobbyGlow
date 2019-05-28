@@ -9,6 +9,7 @@ public class ConfigValues {
 
     private File configFile;
     private JsonObject loadedConfig = new JsonObject();
+    public boolean enabled = true;
 
     private String key = "";
 
@@ -29,6 +30,7 @@ public class ConfigValues {
                 String complete = builder.toString();
                 loadedConfig = new JsonParser().parse(complete).getAsJsonObject();
                 setKey(loadedConfig.get("key").getAsString());
+                enabled = loadedConfig.get("enabled").getAsBoolean();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -45,6 +47,7 @@ public class ConfigValues {
             FileWriter writer = new FileWriter(configFile);
             BufferedWriter bufferedWriter = new BufferedWriter(writer);
             loadedConfig.addProperty("key", getKey());
+            loadedConfig.addProperty("enabled", enabled);
             bufferedWriter.write(loadedConfig.toString());
             bufferedWriter.close();
             writer.close();

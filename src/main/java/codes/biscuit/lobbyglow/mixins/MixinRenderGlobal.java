@@ -2,12 +2,14 @@ package codes.biscuit.lobbyglow.mixins;
 
 import codes.biscuit.lobbyglow.LobbyGlow;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.EntityPlayerSP;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.GlStateManager;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.culling.ICamera;
 import net.minecraft.client.renderer.entity.RenderManager;
+import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.client.shader.Framebuffer;
 import net.minecraft.client.shader.ShaderGroup;
 import net.minecraft.entity.Entity;
@@ -15,7 +17,6 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.player.EntityPlayer;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -34,19 +35,30 @@ public abstract class MixinRenderGlobal {
     @Shadow private Framebuffer entityOutlineFramebuffer;
     @Shadow private ShaderGroup entityOutlineShader;
 
+    @Shadow protected abstract boolean isRenderEntityOutlines();
+
     @Redirect(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;isRenderEntityOutlines()Z", ordinal = 0))
     private boolean onRenderEntities(RenderGlobal renderGlobal) {
         return false;
     }
 
-    /**
-     * @reason Removed spectator mode requirement to allow glowing in lobbies.
-     * @author Biscut
-     */
-    @Overwrite
-    public boolean isRenderEntityOutlines() {
-        return this.entityOutlineFramebuffer != null && this.entityOutlineShader != null && this.mc.thePlayer != null && LobbyGlow.INSTANCE.getUtils().isInHypixelLobby();
+    // Remove condition by always returning true
+    @Redirect(method = "isRenderEntityOutlines", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/EntityPlayerSP;isSpectator()Z", ordinal = 0))
+    private boolean isSpectatorDisableCheck(EntityPlayerSP entityPlayerSP) {
+        return true;
     }
+
+    // Instead of key down, check if they are in the lobby
+    @Redirect(method = "isRenderEntityOutlines", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/settings/KeyBinding;isKeyDown()Z", ordinal = 0))
+    private boolean isKeyDownDisableCheck(KeyBinding keyBinding) {
+        return LobbyGlow.INSTANCE.getUtils().isInHypixelLobby();
+    }
+
+    // Old method, using the above instead so I don't overwrite the conditions made by optifine
+//    @Overwrite
+//    public boolean isRenderEntityOutlines() {
+//        return this.entityOutlineFramebuffer != null && this.entityOutlineShader != null && this.mc.thePlayer != null && LobbyGlow.INSTANCE.getUtils().isInHypixelLobby();
+//    }
 
     @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", shift = At.Shift.BEFORE, ordinal = 2, args = {"ldc=entities"}), locals = LocalCapture.CAPTURE_FAILSOFT) // Optifine version
     private void renderEntities(Entity renderViewEntity, ICamera camera, float partialTicks, CallbackInfo ci, int pass, double d0, double d1, double d2, Entity entity, double d3, double d4, double d5, List<Entity> list, boolean bool0, boolean bool1, int i1) {
@@ -59,7 +71,7 @@ public abstract class MixinRenderGlobal {
     }
 
     private void displayOutlines(List<Entity> entities, double x, double y, double z, ICamera camera, float partialTicks) {
-        if (isRenderEntityOutlines()) // Replaced isRenderEntityOutlines call with the conditions themselves
+        if (LobbyGlow.INSTANCE.getConfigValues().enabled && isRenderEntityOutlines()) // Replaced isRenderEntityOutlines call with the conditions themselves
         {
             GlStateManager.depthFunc(519);
             GlStateManager.disableFog();
